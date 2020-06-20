@@ -2,6 +2,54 @@ import torch
 import torch.nn as nn
 
 
+class GLN(nn.Module):
+    """
+    A Gated Linear Network, composed of multiple layers of GLN neurons.
+    """
+
+    def __init__(self, *layers):
+        self.layers = nn.ModuleList(list(layers))
+
+    def base_predictions(self, z):
+        """
+        Create base prediction probabilities from the input z by squashing the
+        inputs into probabilities.
+        """
+        epsilon = max(layer.epsilon for layer in self.layers)
+        return torch.sigmoid(z).clamp(epsilon, 1 - epsilon)
+
+    def forward(self, x, z):
+        """
+        Apply the GLN layer-by-layer.
+
+        Args:
+            x: an [N x D] Tensor of input probabilities.
+            z: an [N x Z] Tensor of side information from the input.
+
+        Returns:
+            An [N x K] Tensor of output probabilities.
+        """
+        for layer in self.layers:
+            x = layer(x, z)
+        return x
+
+    def forward_grad(self, x, z, targets):
+        """
+        Apply the GLN on layer-by-layer and compute gradients.
+
+        Args:
+            x: an [N x D] Tensor of probabilities from the previous layer.
+            z: an [N x Z] Tensor of side information from the input.
+            targets: an [N] Tensor of boolean target values.
+
+        Returns:
+            An [N x K] Tensor of non-differentiable output probabilities.
+        """
+        for layer in self.layers:
+            x = layer.forward_grad(x, z, targets)
+        return x
+
+
 class Layer(nn.Module):
     """
     A single layer in a Gated Linear Network.
