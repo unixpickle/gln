@@ -47,14 +47,38 @@ class Layer(nn.Module):
         Returns:
             An [N x K] Tensor of output probabilities.
         """
+        return self._forward(x, z)["probs"]
+
+    def _forward(self, x, z):
         biases = torch.ones_like(x[:, :1]) * self.bias_term
         x = torch.cat([x, biases], dim=-1)
-        y = self.weights(logit(x))
+        logit_x = logit(x)
+        y = self.weights(logit_x)
         y = y.view(-1, self.half_spaces, self.num_outputs)
         gate_values = self.gates(z).view(-1, self.half_spaces, self.num_outputs)
         gate_choices = torch.argmin(gate_values, dim=1, keepdim=True)
         y = torch.gather(y, 1, gate_choices).view(-1, self.num_outputs)
-        return torch.sigmoid(y).clamp(self.epsilon, 1 - self.epsilon)
+        return {
+            "logits": y,
+            "probs": torch.sigmoid(y).clamp(self.epsilon, 1 - self.epsilon),
+        }
+
+    def forward_grad(self, x, z, targets):
+        """
+        Apply the layer and update the gradients of the weights.
+
+        Args:
+            x: an [N x D] Tensor of probabilities from the previous layer.
+            z: an [N x Z] Tensor of side information from the input.
+            targets: an [N] Tensor of boolean target values.
+
+        Returns:
+            An [N x K] Tensor of non-differentiable output probabilities.
+        """
+        forward_out = self._forward(x.detach(), z.detach())
+        upstream_grad = forward_out["probs"] - targets.float()[:, None]
+        forward_out["logits"].backward(gradient=upstream_grad.detach())
+        return forward_out["probs"].detach()
 
 
 def logit(x):
