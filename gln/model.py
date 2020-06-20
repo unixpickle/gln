@@ -8,6 +8,7 @@ class GLN(nn.Module):
     """
 
     def __init__(self, *layers):
+        super().__init__()
         self.layers = nn.ModuleList(list(layers))
 
     def base_predictions(self, z):
@@ -64,6 +65,8 @@ class Layer(nn.Module):
         epsilon=1e-4,
         weight_clip=10.0,
     ):
+        super().__init__()
+
         self.num_side = num_side
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
@@ -73,8 +76,8 @@ class Layer(nn.Module):
         self.weight_clip = weight_clip
         self.bias_term = 1 - epsilon
 
-        init_gates = torch.randn(num_side, num_outputs * half_spaces)
-        init_gates /= (init_gates ** 2).sum(dim=0, keepdim=True).sqrt()
+        init_gates = torch.randn(num_outputs * half_spaces, num_side)
+        init_gates /= (init_gates ** 2).sum(dim=1, keepdim=True).sqrt()
         self.gates = nn.Linear(num_side, num_outputs * half_spaces)
         self.gates.weight.detach().copy_(init_gates)
         self.gates.bias.detach().copy_(torch.randn(half_spaces * num_outputs))
