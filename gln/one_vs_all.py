@@ -42,3 +42,7 @@ class OneVsAll(nn.Module):
             for i, model in enumerate(self.models)
         ]
         return torch.cat(outs, dim=-1)
+
+    def clip_weights(self):
+        for model in self.models:
+            model.clip_weights()

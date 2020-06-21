@@ -26,6 +26,7 @@ def main():
             if p.grad is not None:
                 p.detach().sub_(lr * p.grad)
                 p.grad.zero_()
+        model.clip_weights()
 
         if t % LOG_INTERVAL == 0 and t > 0:
             print(

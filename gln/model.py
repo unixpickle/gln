@@ -50,6 +50,10 @@ class GLN(nn.Module):
             x = layer.forward_grad(x, z, targets)
         return x
 
+    def clip_weights(self):
+        for layer in self.layers:
+            layer.clip_weights()
+
 
 class Layer(nn.Module):
     """
@@ -138,6 +142,10 @@ class Layer(nn.Module):
         upstream_grad = forward_out["probs"] - targets.float()[:, None]
         forward_out["logits"].backward(gradient=upstream_grad.detach())
         return forward_out["probs"].detach()
+
+    def clip_weights(self):
+        for p in self.weights.parameters():
+            p.detach().clamp_(-self.weight_clip, self.weight_clip)
 
 
 def logit(x):
