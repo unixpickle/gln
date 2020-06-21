@@ -82,7 +82,9 @@ class Layer(nn.Module):
         self.gates.weight.detach().copy_(init_gates)
         self.gates.bias.detach().copy_(torch.randn(half_spaces * num_outputs))
 
-        self.weights = nn.Linear(num_inputs + 1, half_spaces * num_outputs, bias=False)
+        self.weights = nn.Linear(
+            num_inputs + 1, (2 ** half_spaces) * num_outputs, bias=False
+        )
         self.weights.weight.detach().copy_(
             torch.randn(*self.weights.weight.shape) / num_outputs
         )
@@ -105,9 +107,15 @@ class Layer(nn.Module):
         x = torch.cat([x, biases], dim=-1)
         logit_x = logit(x)
         y = self.weights(logit_x)
-        y = y.view(-1, self.half_spaces, self.num_outputs)
+        y = y.view(-1, 2 ** self.half_spaces, self.num_outputs)
+
+        # Use binary gates to construct a binary number.
         gate_values = self.gates(z).view(-1, self.half_spaces, self.num_outputs)
-        gate_choices = torch.argmin(gate_values, dim=1, keepdim=True)
+        gate_bits = gate_values > 0
+        gate_choices = torch.zeros_like(gate_bits[:, :1]).long()
+        for i, bit in enumerate(gate_bits.unbind(1)):
+            gate_choices += bit[:, None].long() * (2 ** i)
+
         y = torch.gather(y, 1, gate_choices).view(-1, self.num_outputs)
         return {
             "logits": y,
