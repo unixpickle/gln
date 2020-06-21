@@ -18,12 +18,6 @@ def main():
         preds = model_prediction(models, inputs)
         train_correct += torch.sum((preds == outputs).long()).item()
         train_total += inputs.shape[0]
-        if t % LOG_INTERVAL == 0 and t > 0:
-            print(
-                f"train {t}: train_accuracy={(train_correct/train_total):02f} lr={lr}"
-            )
-            train_total = 0
-            train_correct = 0
 
         lr = min(100 / max(t, 1), 0.01)
         for label, model in enumerate(models):
@@ -32,6 +26,13 @@ def main():
                 if p.grad is not None:
                     p.detach().sub_(lr * p.grad)
                     p.grad.zero_()
+
+        if t % LOG_INTERVAL == 0 and t > 0:
+            print(
+                f"train {t}: train_accuracy={(train_correct/train_total):02f} lr={lr}"
+            )
+            train_total = 0
+            train_correct = 0
 
     correct = 0
     total = 0
