@@ -112,19 +112,30 @@ class Layer(nn.Module):
         logit_x = logit(x)
         y = self.weights(logit_x)
         y = y.view(-1, 2 ** self.half_spaces, self.num_outputs)
+        gate_choices = self.gate_choices(z)
+        y = torch.gather(y, 1, gate_choices).view(-1, self.num_outputs)
+        return {
+            "logits": y,
+            "probs": torch.sigmoid(y).clamp(self.epsilon, 1 - self.epsilon),
+            "gate_choices": gate_choices,
+        }
 
-        # Use binary gates to construct a binary number.
+    def gate_choices(self, z):
+        """
+        Compute the gate choices for each neuron.
+
+        Args:
+            z: an [N x Z] Tensor of side information from the input.
+
+        Returns:
+            An [N x 1 x K] long Tensor of gate choices for each output neuron.
+        """
         gate_values = self.gates(z).view(-1, self.half_spaces, self.num_outputs)
         gate_bits = gate_values > 0
         gate_choices = torch.zeros_like(gate_bits[:, :1]).long()
         for i, bit in enumerate(gate_bits.unbind(1)):
             gate_choices += bit[:, None].long() * (2 ** i)
-
-        y = torch.gather(y, 1, gate_choices).view(-1, self.num_outputs)
-        return {
-            "logits": y,
-            "probs": torch.sigmoid(y).clamp(self.epsilon, 1 - self.epsilon),
-        }
+        return gate_choices
 
     def forward_grad(self, x, z, targets):
         """
