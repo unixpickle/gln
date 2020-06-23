@@ -8,9 +8,12 @@ INPUT_DIM = 28 ** 2
 CLASS = 0
 LOG_INTERVAL = 100
 
+DEVICE = torch.device("cuda" if torch.cuda.device_count() else "cpu")
+
 
 def main():
     model = OneVsAll(10, create_model)
+    model.to(DEVICE)
     train_data = data_loader(True)
 
     train_correct = 0
@@ -61,7 +64,7 @@ def data_loader(train):
     for x, y in torch.utils.data.DataLoader(
         mnist, batch_size=(1 if train else 128), shuffle=True
     ):
-        yield x.view(x.shape[0], -1), y
+        yield x.view(x.shape[0], -1).to(DEVICE), y.to(DEVICE)
 
 
 if __name__ == "__main__":
