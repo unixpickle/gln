@@ -58,8 +58,11 @@ def create_model():
 
 
 def data_loader(train):
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+    )
     mnist = datasets.MNIST(
-        "mnist_data", train=train, download=True, transform=transforms.ToTensor()
+        "mnist_data", train=train, download=True, transform=transform
     )
     for x, y in torch.utils.data.DataLoader(
         mnist, batch_size=(1 if train else 128), shuffle=True
