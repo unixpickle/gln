@@ -38,15 +38,19 @@ def main():
             train_total = 0
             train_correct = 0
 
+    print(f"train accuracy: {compute_accuracy(model, data_loader(True, batch=128))}")
+    print(f"test accuracy: {compute_accuracy(model, data_loader(False, batch=128))}")
+
+
+def compute_accuracy(model, dataset):
     correct = 0
     total = 0
-    test_data = data_loader(False)
-    for inputs, outputs in test_data:
+    for inputs, outputs in dataset:
         with torch.no_grad():
             preds = torch.argmax(model(inputs), dim=-1)
         correct += torch.sum((preds == outputs).long()).item()
         total += inputs.shape[0]
-    print(f"test accuracy: {(correct/total):02f}")
+    return correct / total
 
 
 def create_model():
@@ -57,16 +61,14 @@ def create_model():
     )
 
 
-def data_loader(train):
+def data_loader(train, batch=1):
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
     mnist = datasets.MNIST(
         "mnist_data", train=train, download=True, transform=transform
     )
-    for x, y in torch.utils.data.DataLoader(
-        mnist, batch_size=(1 if train else 128), shuffle=True
-    ):
+    for x, y in torch.utils.data.DataLoader(mnist, batch_size=batch, shuffle=True):
         yield x.view(x.shape[0], -1).to(DEVICE), y.to(DEVICE)
 
 
