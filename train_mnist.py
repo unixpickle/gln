@@ -1,4 +1,6 @@
 import torch
+import torch.optim as optim
+from torch.optim.lr_scheduler import LambdaLR
 from torchvision import datasets, transforms
 
 from gln.model import GLN, Layer
@@ -14,27 +16,27 @@ DEVICE = torch.device("cuda" if torch.cuda.device_count() else "cpu")
 def main():
     model = OneVsAll(10, create_model)
     model.to(DEVICE)
-    train_data = data_loader(True)
+
+    opt = optim.SGD(model.parameters(), lr=0.01)
+    schedule = LambdaLR(opt, lambda t: min(10000 / (t + 1), 1.0))
 
     train_correct = 0
     train_total = 0
+    train_data = data_loader(True)
     for t, (inputs, outputs) in enumerate(train_data):
+        opt.zero_grad()
+
         logits = model.forward_grad(inputs, outputs)
         preds = torch.argmax(logits, dim=-1)
         train_correct += torch.sum((preds == outputs).long()).item()
         train_total += inputs.shape[0]
 
-        lr = min(100 / max(t, 1), 0.01)
-        for p in model.parameters():
-            if p.grad is not None:
-                p.detach().sub_(lr * p.grad)
-                p.grad.zero_()
+        opt.step()
+        schedule.step()
         model.clip_weights()
 
         if t % LOG_INTERVAL == 0 and t > 0:
-            print(
-                f"train {t}: train_accuracy={(train_correct/train_total):02f} lr={lr}"
-            )
+            print(f"train {t}: train_accuracy={(train_correct/train_total):02f}")
             train_total = 0
             train_correct = 0
 
