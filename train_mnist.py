@@ -1,3 +1,6 @@
+import argparse
+from functools import partial
+
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
@@ -14,10 +17,20 @@ DEVICE = torch.device("cuda" if torch.cuda.device_count() else "cpu")
 
 
 def main():
-    model = OneVsAll(10, create_model)
+    args = arg_parser().parse_args()
+
+    model = OneVsAll(
+        10,
+        partial(
+            create_model,
+            half_spaces=args.half_spaces,
+            epsilon=args.epsilon,
+            weight_clip=args.weight_clip,
+        ),
+    )
     model.to(DEVICE)
 
-    opt = optim.SGD(model.parameters(), lr=0.01)
+    opt = optim.SGD(model.parameters(), lr=args.lr)
     schedule = LambdaLR(opt, lambda t: min(10000 / (t + 1), 1.0))
 
     train_correct = 0
@@ -55,11 +68,11 @@ def compute_accuracy(model, dataset):
     return correct / total
 
 
-def create_model():
+def create_model(**kwargs):
     return GLN(
-        Layer(INPUT_DIM, INPUT_DIM, 128),
-        Layer(INPUT_DIM, 128, 128),
-        Layer(INPUT_DIM, 128, 1),
+        Layer(INPUT_DIM, INPUT_DIM, 128, **kwargs),
+        Layer(INPUT_DIM, 128, 128, **kwargs),
+        Layer(INPUT_DIM, 128, 1, **kwargs),
     )
 
 
@@ -72,6 +85,15 @@ def data_loader(train, batch=1):
     )
     for x, y in torch.utils.data.DataLoader(mnist, batch_size=batch, shuffle=True):
         yield x.view(x.shape[0], -1).to(DEVICE), y.to(DEVICE)
+
+
+def arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lr", default=0.01, help="initial learning rate")
+    parser.add_argument("--half-spaces", default=4, help="number of half-space gates")
+    parser.add_argument("--epsilon", default=1e-4, help="sigmoid clip")
+    parser.add_argument("--weight-clip", default=10, help="weight clip")
+    return parser
 
 
 if __name__ == "__main__":
