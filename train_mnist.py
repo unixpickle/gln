@@ -89,10 +89,12 @@ def data_loader(train, batch=1):
 
 def arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lr", default=0.01, help="initial learning rate")
-    parser.add_argument("--half-spaces", default=4, help="number of half-space gates")
-    parser.add_argument("--epsilon", default=1e-4, help="sigmoid clip")
-    parser.add_argument("--weight-clip", default=10, help="weight clip")
+    parser.add_argument("--lr", default=0.01, help="initial learning rate", type=float)
+    parser.add_argument(
+        "--half-spaces", default=4, help="number of half-space gates", type=int
+    )
+    parser.add_argument("--epsilon", default=1e-4, help="sigmoid clip", type=float)
+    parser.add_argument("--weight-clip", default=10, help="weight clip", type=float)
     return parser
 
 
