@@ -89,9 +89,7 @@ class Layer(nn.Module):
         self.weights = nn.Linear(
             num_inputs + 1, (2 ** half_spaces) * num_outputs, bias=False
         )
-        self.weights.weight.detach().copy_(
-            torch.randn(*self.weights.weight.shape) / num_outputs
-        )
+        self.weights.weight.detach().fill_(1 / (num_inputs + 1))
 
     def forward(self, x, z):
         """
