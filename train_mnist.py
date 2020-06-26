@@ -35,7 +35,7 @@ def main():
 
     train_correct = 0
     train_total = 0
-    train_data = data_loader(True)
+    train_data = data_loader(True, deterministic=args.deterministic)
     for t, (inputs, outputs) in enumerate(train_data):
         opt.zero_grad()
 
@@ -76,14 +76,16 @@ def create_model(**kwargs):
     )
 
 
-def data_loader(train, batch=1):
+def data_loader(train, batch=1, deterministic=True):
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
     mnist = datasets.MNIST(
         "mnist_data", train=train, download=True, transform=transform
     )
-    for x, y in torch.utils.data.DataLoader(mnist, batch_size=batch, shuffle=True):
+    for x, y in torch.utils.data.DataLoader(
+        mnist, batch_size=batch, shuffle=not deterministic
+    ):
         yield x.view(x.shape[0], -1).to(DEVICE), y.to(DEVICE)
 
 
@@ -95,6 +97,7 @@ def arg_parser():
     )
     parser.add_argument("--epsilon", default=1e-4, help="sigmoid clip", type=float)
     parser.add_argument("--weight-clip", default=10, help="weight clip", type=float)
+    parser.add_argument("--deterministic", action="store_true")
     return parser
 
 
